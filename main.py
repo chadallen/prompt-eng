@@ -15,35 +15,32 @@ connection = psycopg2.connect(
 
 cursor = connection.cursor()
 
-# Function to generate a question using ChatGPT-3
+# Function to generate a question using GPT-3.5-turbo
 def generate_question(context, answer):
-    response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=f"Create a question that would yield the answer '{answer}' given the following context:\n\n{context}\n\nQuestion:",
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "Create a question that would yield the answer given the context."},
+            {"role": "user", "content": f"context: {context}\nanswer: {answer}"}
+        ],
         temperature=0.8,
         max_tokens=100,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=["\n"],
     )
 
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
 
-# Function to generate an answer using ChatGPT-3
+# Function to generate an answer using GPT-3.5-turbo
 def generate_answer(context, question):
-    response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=f"{context}\n\nQuestion: {question}\nAnswer:",
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"context: {context}\nquestion: {question}"}
+        ],
         temperature=0.8,
         max_tokens=100,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=["\n"],
     )
-   
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
     
 
 # Fetch data from the database
