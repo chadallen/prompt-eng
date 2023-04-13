@@ -1,83 +1,80 @@
-import json
-import requests
-import psycopg2
-from psycopg2 import OperationalError
 import openai
+import psycopg2
+import os
 
-# Set your OpenAI API key
-openai.api_key = "your_openai_api_key"
+# Set up the OpenAI API client
+openai.api_key = os.environ['openai_key']
 
-def generate_gpt_chat_prompt(paragraph, question, answer):
-    # (same as before)
+# Connect to the PostgreSQL database
+connection = psycopg2.connect(
+    host=os.environ['PGHOST'],
+    database=os.environ['PGDATABASE'],
+    user=os.environ['PGUSER'],
+    password=os.environ['PGPASSWORD']
+)
 
-def generate_gpt_answer(context, gpt_chat_prompt):
-    # (same as before)
+cursor = connection.cursor()
 
-def compare_answers(original_answer, gpt_generated_answer):
-    # (same as before)
-
-# Set the number of articles to process
-num_articles_to_process = 10
-
-# Set the number of records to download
-num_records_to_download = 50
-
-# Connect to PostgreSQL database
-try:
-    connection = psycopg2.connect(
-        host='localhost',
-        user='your_username',
-        password='your_password',
-        dbname='squad'
+# Function to generate a question using ChatGPT-3
+def generate_question(context, answer):
+    response = openai.Completion.create(
+        engine="text-davinci-002",
+        prompt=f"Create a question that would yield the answer '{answer}' given the following context:\n\n{context}\n\nQuestion:",
+        temperature=0.8,
+        max_tokens=100,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        stop=["\n"],
     )
 
-    cursor = connection.cursor()
+    return response.choices[0].text.strip()
 
-    # Retrieve dev set articles and their questions (limited by num_records_to_download)
-    cursor.execute("SELECT a.id, p.id, q.id, p.context, q.question, an.text, an.answer_start FROM articles a JOIN paragraphs p ON a.id = p.article_id JOIN questions q ON p.id = q.paragraph_id JOIN answers an ON q.id = an.question_id WHERE a.is_dev_set = 1 LIMIT %s", (num_records_to_download,))
-    data = cursor.fetchall()
+# Function to generate an answer using ChatGPT-3
+def generate_answer(context, question):
+    response = openai.Completion.create(
+        engine="text-davinci-002",
+        prompt=f"{context}\n\nQuestion: {question}\nAnswer:",
+        temperature=0.8,
+        max_tokens=100,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        stop=["\n"],
+    )
+   
+    return response.choices[0].text.strip()
+    
 
-    # Generate GPT-chat prompts and store them in the database
-    for record in data:
-        article_id, paragraph_id, question_id, context, question, answer_text, answer_start = record
-        answer = {"text": answer_text, "answer_start": answer_start}
+# Fetch data from the database
+cursor.execute("SELECT id, paragraph, question, answer FROM squad_data LIMIT 10")
+rows = cursor.fetchall()
 
-        gpt_chat_prompt = generate_gpt_chat_prompt(context, question, answer)
+# Generate questions and answers, and compare them with the original answers
+for row in rows:
+    record_id, context, original_question, original_answer = row
+    generated_question = generate_question(context, original_answer)
+    generated_answer = generate_answer(context, generated_question)
+    answer_match = (generated_answer.lower() == original_answer.lower())
+    print('context: ' + context)
+    print('original question: ' + original_question)
+    print('generated question: ' + generated_question)
+    print('orignal answer: ' + original_answer)
+    print('generated_answer: ' + generated_answer)  
+    print('answer match: ' + answer_match)
+    print('---------')
+    
+    # Update the generated_question, generated_answer, and answer_match columns in the database
+    cursor.execute("""
+        UPDATE squad_data
+        SET generated_question = %s,
+            generated_answer = %s,
+            answer_match = %s
+        WHERE id = %s
+    """, (generated_question, generated_answer, answer_match, record_id))
 
-        cursor.execute("INSERT INTO gpt_chat_prompts (prompt, question_id) VALUES (%s, %s)", (gpt_chat_prompt, question_id))
-        connection.commit()
+connection.commit()
 
-    # Retrieve dev set articles, their questions, GPT-chat prompts, and answers (limited by num_articles_to_process)
-    cursor.execute("SELECT a.id, p.id, q.id, p.context, q.question, an.text, an.answer_start, gcp.prompt FROM articles a JOIN paragraphs p ON a.id = p.article_id JOIN questions q ON p.id = q.paragraph_id JOIN answers an ON q.id = an.question_id JOIN gpt_chat_prompts gcp ON q.id = gcp.question_id WHERE a.is_dev_set = 1 LIMIT %s", (num_articles_to_process,))
-    data = cursor.fetchall()
-
-    # Generate GPT answers and store them in the database
-    for record in data:
-        article_id, paragraph_id, question_id, context, question, answer_text, answer_start, gpt_chat_prompt = record
-
-        gpt_generated_answer = generate_gpt_answer(context, gpt_chat_prompt)
-
-        cursor.execute("INSERT INTO gpt_generated_answers (answer, question_id) VALUES (%s, %s)", (gpt_generated_answer, question_id))
-        connection.commit()
-
-    # Retrieve dev set articles, their questions, GPT-chat prompts, and answers (limited by num_articles_to_process)
-    cursor.execute("SELECT a.id, p.id, q.id, p.context, q.question, an.text, an.answer_start, gcp.prompt, gga.answer FROM articles a JOIN paragraphs p ON a.id = p.article_id JOIN questions q ON p.id = q.paragraph_id JOIN answers an ON q.id = an.question_id JOIN gpt_chat_prompts gcp ON q.id = gcp.question_id JOIN gpt_generated_answers gga ON q.id = gga.question_id WHERE a.is_dev_set = 1 LIMIT %s", (num_articles_to_process,))
-  
-data = cursor.fetchall()
-
-    # Compare GPT-generated answers with original answers and store the comparisons in the database
-    for record in data:
-        article_id, paragraph_id, question_id, context, question, answer_text, answer_start, gpt_chat_prompt, gpt_generated_answer = record
-
-        is_match = compare_answers(answer_text, gpt_generated_answer)
-
-        cursor.execute("INSERT INTO answer_comparisons (is_match, question_id) VALUES (%s, %s)", (is_match, question_id))
-        connection.commit()
-
-except OperationalError as e:
-    print(f"The error '{e}' occurred")
-
-finally:
-    if connection:
-        cursor.close()
-        connection.close()
+# Close the cursor and connection
+cursor.close()
+connection.close()
