@@ -55,13 +55,14 @@ for row in rows:
     record_id, context, original_question, original_answer = row
     generated_question = generate_question(context, original_answer)
     generated_answer = generate_answer(context, generated_question)
+    # This is obviously not an actual good way to see if the answers really match
     answer_match = (generated_answer.lower() == original_answer.lower())
     print('context: ' + context)
     print('original question: ' + original_question)
     print('generated question: ' + generated_question)
     print('orignal answer: ' + original_answer)
     print('generated_answer: ' + generated_answer)  
-    print('answer match: ' + answer_match)
+    # print('answer match: ' + str(answer_match))
     print('---------')
     
     # Update the generated_question, generated_answer, and answer_match columns in the database
