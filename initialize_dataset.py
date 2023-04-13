@@ -2,6 +2,8 @@ import requests
 import psycopg2
 import os
 
+# This code will grab the SQuAD 1.1 data set from its github repo, download a local copy and stuff it into a simple PostresSQL database
+
 # Download the SQuAD dataset
 train_url = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v1.1.json'
 dev_url = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json'

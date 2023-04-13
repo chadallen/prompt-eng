@@ -43,7 +43,7 @@ def generate_answer(context, question):
     return response.choices[0].message['content'].strip()
     
 
-# Fetch data from the database
+# Fetch data from the database -- LIMIT hardcoded because lazy
 cursor.execute("SELECT id, paragraph, question, answer FROM squad_data LIMIT 10")
 rows = cursor.fetchall()
 
@@ -54,6 +54,8 @@ for row in rows:
     generated_answer = generate_answer(context, generated_question)
     # This is obviously not an actual good way to see if the answers really match
     answer_match = (generated_answer.lower() == original_answer.lower())
+
+    # Cheap debugging
     print('context: ' + context)
     print('original question: ' + original_question)
     print('generated question: ' + generated_question)
