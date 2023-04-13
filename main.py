@@ -37,8 +37,8 @@ def generate_answer(context, question):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": f"context: {context}\nquestion: {question}"}
         ],
-        temperature=0.8,
-        max_tokens=100,
+        temperature=0.5,
+        max_tokens=50,
     )
     return response.choices[0].message['content'].strip()
     
