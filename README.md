@@ -9,7 +9,7 @@ My very naive approach here uses the SQuAD database[2], which is a giant set of:
 To use:
 
 1. Run initialize_dataset.py to download the SQUaD dataset and load it into a PostgreSQL database
-2. Run main.py to iterate over the dataset and populate the database with new prompts and new answers for each question. There is a LIMIT set to 10 in the SQL query. Change it to a higher number if you want, but don't forget you're paying for tokens. Maybe I'll make all of this more easily configurable at some point.
+2. Run main.py to iterate over the dataset and populate the database with new prompts and new answers for each question. There is a LIMIT set to 5 in the SQL query. Change it to a higher number if you want, but don't forget you're paying for tokens. Maybe I'll make all of this more easily configurable at some point.
 
 Disclaimers:
 

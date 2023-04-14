@@ -2,6 +2,8 @@
 
 # Very rudimentary program for examining GPT's ability to generate prompts based on a large question-and-answer database (SQUaD). This is a toy program for my own experimentation. There is nothing production-grade here.
 
+# Co-written with ChatGPT
+
 import openai
 import psycopg2
 import os
@@ -29,7 +31,7 @@ cursor = connection.cursor()
 
 if save_to_file: 
     # Set up a pipe-delimited file if the bit is flipped. This is a cheap way to record the output of a given run without having to go query the whole squad_data database
-    with open('squad.csv','a') as tempLog:
+    with open('squad.txt','a') as tempLog:
       csv.writer(tempLog, delimiter='|').writerow(["context","original_question","generated_question", "original answer", "generated_answer"])
   
 # Function to generate a question using GPT-3.5-turbo
@@ -76,7 +78,7 @@ for row in rows:
 
     # Write results to our pipe-delimted file if the bit is flipped
     if save_to_file: 
-        with open('squad.csv','a') as tempLog:
+        with open('squad.txt','a') as tempLog:
           csv.writer(tempLog, delimiter='|').writerow([context,original_question,generated_question,original_answer,generated_answer])
 
     # Write the generated_question and generated_answer to squad_data
