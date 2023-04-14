@@ -1,13 +1,19 @@
+# https://github.com/chadallen/prompt-eng
+
+# Very rudimentary program for examining GPT's ability to generate prompts based on a large question-and-answer database (SQUaD). This is a toy program for my own experimentation. There is nothing production-grade here.
+
 import openai
 import psycopg2
 import os
+import csv
 
 #Config some variables that you might like to turn the knobs on
-generate_question_temperature = 0.2
+generate_question_temperature = 0.5
 generate_question_max_tokens = 50
-generate_answer_temperature = 0.2
+generate_answer_temperature = 0.5
 generate_answer_max_tokens = 50
-rows_to_process = 10
+rows_to_process = 5
+save_to_file = True
 
 # Set up the OpenAI API client
 openai.api_key = os.environ['openai_key']
@@ -19,9 +25,13 @@ connection = psycopg2.connect(
     user=os.environ['PGUSER'],
     password=os.environ['PGPASSWORD']
 )
-
 cursor = connection.cursor()
 
+if save_to_file: 
+    # Set up a pipe-delimited file if the bit is flipped. This is a cheap way to record the output of a given run without having to go query the whole squad_data database
+    with open('squad.csv','a') as tempLog:
+      csv.writer(tempLog, delimiter='|').writerow(["context","original_question","generated_question", "original answer", "generated_answer"])
+  
 # Function to generate a question using GPT-3.5-turbo
 def generate_question(context, answer):
     response = openai.ChatCompletion.create(
@@ -49,7 +59,6 @@ def generate_answer(context, question):
     )
     return response.choices[0].message['content'].strip()
     
-
 # Fetch data from the database. We'll just get some random rows for now since we aren't planning to fetch the whole data set.
 cursor.execute("SELECT id, paragraph, question, answer FROM squad_data order by random() LIMIT " + str(rows_to_process))
 rows = cursor.fetchall()
@@ -62,26 +71,25 @@ for row in rows:
     # This is obviously not an actual good way to see if the answers really match
     answer_match = (generated_answer.lower() == original_answer.lower())
 
-    # Cheap debugging
-    print('context: ' + context)
-    print('original question: ' + original_question)
-    print('generated question: ' + generated_question)
-    print('orignal answer: ' + original_answer)
-    print('generated_answer: ' + generated_answer)  
-    # print('answer match: ' + str(answer_match))
-    print('~~~~~~~')
-    
-    # Update the generated_question, generated_answer, and answer_match columns in the database
+    # Cheap debugging 
+    print('context: ' + context), print('original question: ' + original_question), print('generated question: ' + generated_question), print('orignal answer: ' + original_answer), print('generated_answer: ' + generated_answer +'\n')  
+
+    # Write results to our pipe-delimted file if the bit is flipped
+    if save_to_file: 
+        with open('squad.csv','a') as tempLog:
+          csv.writer(tempLog, delimiter='|').writerow([context,original_question,generated_question,original_answer,generated_answer])
+
+    # Write the generated_question and generated_answer to squad_data
     cursor.execute("""
         UPDATE squad_data
         SET generated_question = %s,
-            generated_answer = %s,
-            answer_match = %s
+            generated_answer = %s
         WHERE id = %s
-    """, (generated_question, generated_answer, answer_match, record_id))
+    """, (generated_question, generated_answer, record_id))
 
 connection.commit()
 
 # Close the cursor and connection
 cursor.close()
 connection.close()
+
