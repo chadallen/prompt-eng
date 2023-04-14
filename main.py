@@ -2,6 +2,13 @@ import openai
 import psycopg2
 import os
 
+#Config some variables that you might like to turn the knobs on
+generate_question_temperature = 0.8
+generate_question_max_tokens = 50
+generate_answer_temperature = 0.8
+generate_answer_max_tokens = 50
+rows_to_process = 10
+
 # Set up the OpenAI API client
 openai.api_key = os.environ['openai_key']
 
@@ -23,8 +30,8 @@ def generate_question(context, answer):
             {"role": "system", "content": "Create a question that would yield the answer given the context."},
             {"role": "user", "content": f"context: {context}\nanswer: {answer}"}
         ],
-        temperature=0.8,
-        max_tokens=100,
+        temperature=generate_question_temperature,
+        max_tokens=generate_question_max_tokens,
     )
 
     return response.choices[0].message['content'].strip()
@@ -37,14 +44,14 @@ def generate_answer(context, question):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": f"context: {context}\nquestion: {question}"}
         ],
-        temperature=0.5,
-        max_tokens=50,
+        temperature=generate_answer_temperature,
+        max_tokens=generate_answer_max_tokens,
     )
     return response.choices[0].message['content'].strip()
     
 
-# Fetch data from the database -- LIMIT hardcoded because lazy
-cursor.execute("SELECT id, paragraph, question, answer FROM squad_data LIMIT 10")
+# Fetch data from the database. We'll just get some random rows for now since we aren't planning to fetch the whole data set.
+cursor.execute("SELECT id, paragraph, question, answer FROM squad_data order by random() LIMIT " + str(rows_to_process))
 rows = cursor.fetchall()
 
 # Generate questions and answers, and compare them with the original answers
@@ -62,7 +69,7 @@ for row in rows:
     print('orignal answer: ' + original_answer)
     print('generated_answer: ' + generated_answer)  
     # print('answer match: ' + str(answer_match))
-    print('---------')
+    print('~~~~~~~')
     
     # Update the generated_question, generated_answer, and answer_match columns in the database
     cursor.execute("""
