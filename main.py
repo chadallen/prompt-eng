@@ -3,9 +3,9 @@ import psycopg2
 import os
 
 #Config some variables that you might like to turn the knobs on
-generate_question_temperature = 0.8
+generate_question_temperature = 0.2
 generate_question_max_tokens = 50
-generate_answer_temperature = 0.8
+generate_answer_temperature = 0.2
 generate_answer_max_tokens = 50
 rows_to_process = 10
 
